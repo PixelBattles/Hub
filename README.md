@@ -1,1 +1,2 @@
-# Server.Hub
+# PixelBattles
+Pixel Battles project
