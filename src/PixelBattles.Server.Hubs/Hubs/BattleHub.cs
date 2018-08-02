@@ -1,7 +1,9 @@
 ﻿using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
+using PixelBattles.Chunkler;
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 
 namespace PixelBattles.Server.Hubs
@@ -9,7 +11,8 @@ namespace PixelBattles.Server.Hubs
     [Authorize(JwtBearerDefaults.AuthenticationScheme)]
     public class BattleHub : Hub
     {
-        private BattleHubContext BattleHubContext { get;set;}
+        private BattleHubContext BattleHubContext { get; set; }
+        private HashSet<ChunkKey> Subscriptions { get; set; }
         
         public BattleHub(BattleHubContext battleHubContext)
         {
@@ -31,29 +34,23 @@ namespace PixelBattles.Server.Hubs
             await base.OnDisconnectedAsync(exception);
         }
 
-        //public Task<GameInfoDTO> GetGameInfoAsync()
-        //{
-        //    return BattleHubContext.GetBattleAsync(GetBattleId());
-        //}
+        public Task GetChunkState(ChunkKey key)
+        {
+            throw new NotImplementedException();
+        }
 
-        //public Task<bool> SubscribeChunkAsync(int x, int y)
-        //{
-        //    return Task.FromResult(false);
-        //}
+        public Task<int> ProcessAction(ChunkKey key, ChunkAction action)
+        {
+            throw new NotImplementedException();
+        }
 
-        //public void UnsubscribeChunk()
-        //{
-        //    throw new NotImplementedException();
-        //}
+        public Task SubscribeChunk(ChunkKey key)
+        {
+            throw new NotImplementedException();
+        }
 
-        //public void GetChunkState()
-        //{
-        //    throw new NotImplementedException();
-        //}
-
-        //public void ProcessAction()
-        //{
-        //    throw new NotImplementedException();
-        //}
+        public void UnsubscribeChunk(ChunkKey key)
+        {
+        }
     }
 }
