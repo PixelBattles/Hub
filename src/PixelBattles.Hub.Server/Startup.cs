@@ -5,11 +5,12 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.IdentityModel.Tokens;
+using PixelBattles.Hub.Server.Hubs;
 using System;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace PixelBattles.Server.Hubs
+namespace PixelBattles.Hub.Server
 {
     public class Startup
     {
@@ -33,8 +34,10 @@ namespace PixelBattles.Server.Hubs
         }
         
         public void ConfigureServices(IServiceCollection services)
-        {            
+        {
             services.AddSignalR();
+            //TODO test    
+            //.AddMessagePackProtocol();
 
             services.AddOptions();
 
@@ -43,7 +46,7 @@ namespace PixelBattles.Server.Hubs
                 options.AddPolicy(JwtBearerDefaults.AuthenticationScheme, policy =>
                 {
                     policy.AddAuthenticationSchemes(JwtBearerDefaults.AuthenticationScheme);
-                    policy.RequireClaim("GameId");
+                    policy.RequireClaim("BattleId");
                     policy.RequireClaim("UserId");
                 });
             });
@@ -67,11 +70,13 @@ namespace PixelBattles.Server.Hubs
                         OnMessageReceived = context =>
                         {
                             var accessToken = context.Request.Query["access_token"];
-
-                            if (!string.IsNullOrEmpty(accessToken.ToString()) &&
-                                (context.HttpContext.WebSockets.IsWebSocketRequest || context.Request.Headers["Accept"] == "text/event-stream"))
+                            // If the request is for our hub...
+                            var path = context.HttpContext.Request.Path;
+                            if (!string.IsNullOrEmpty(accessToken) &&
+                                (path.StartsWithSegments("/hubs/battles")))
                             {
-                                context.Token = context.Request.Query["access_token"];
+                                // Read the token out of the query string
+                                context.Token = accessToken;
                             }
                             return Task.CompletedTask;
                         }
@@ -99,7 +104,7 @@ namespace PixelBattles.Server.Hubs
 
             app.UseSignalR(routes =>
             {
-                routes.MapHub<BattleHub>("/hubs/game");
+                routes.MapHub<BattleHub>("/hubs/battles");
             });
         }
     }

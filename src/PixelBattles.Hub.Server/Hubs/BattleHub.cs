@@ -6,17 +6,17 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
-namespace PixelBattles.Server.Hubs
+namespace PixelBattles.Hub.Server.Hubs
 {
     [Authorize(JwtBearerDefaults.AuthenticationScheme)]
-    public class BattleHub : Hub
+    public class BattleHub : Hub<IBattleHubClient>
     {
-        private BattleHubContext BattleHubContext { get; set; }
-        private HashSet<ChunkKey> Subscriptions { get; set; }
+        private BattleHubContext _battleHubContext;
+        private HashSet<ChunkKey> _subscriptions = new HashSet<ChunkKey>();
         
         public BattleHub(BattleHubContext battleHubContext)
         {
-            this.BattleHubContext = battleHubContext;
+            _battleHubContext = battleHubContext ?? throw new ArgumentNullException(nameof(battleHubContext));
         }
 
         private Guid GetBattleId()
@@ -32,11 +32,15 @@ namespace PixelBattles.Server.Hubs
         public async override Task OnDisconnectedAsync(Exception exception)
         {
             await base.OnDisconnectedAsync(exception);
+            foreach (var subscription in _subscriptions)
+            {
+                await _battleHubContext.ChunklerClient.Unsubscribe(subscription);
+            }
         }
 
-        public Task GetChunkState(ChunkKey key)
+        public Task<ChunkState> GetChunkState(ChunkKey key)
         {
-            throw new NotImplementedException();
+            return _battleHubContext.ChunklerClient.GetChunkState(key);
         }
 
         public Task<int> ProcessAction(ChunkKey key, ChunkAction action)
@@ -44,13 +48,17 @@ namespace PixelBattles.Server.Hubs
             throw new NotImplementedException();
         }
 
-        public Task SubscribeChunk(ChunkKey key)
+        public async Task SubscribeChunk(ChunkKey key)
         {
-            throw new NotImplementedException();
+            if (_subscriptions.Add(key))
+            {
+                await _battleHubContext.ChunklerClient.Subscribe(key, (update) => Clients.Caller.OnUpdate(key, update));
+            }
         }
 
         public void UnsubscribeChunk(ChunkKey key)
         {
+            throw new NotImplementedException();
         }
     }
 }

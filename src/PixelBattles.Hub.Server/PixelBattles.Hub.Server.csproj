@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk.Web">
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
 
   <PropertyGroup>
     <TargetFramework>netcoreapp2.1</TargetFramework>
@@ -13,7 +13,9 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.All" Version="2.1.2" />
-    <PackageReference Include="Microsoft.AspNetCore.SignalR" Version="1.0.2" />
+    <PackageReference Include="Microsoft.AspNetCore.SignalR" Version="1.1.0" />
+    <PackageReference Include="Microsoft.AspNetCore.SignalR.Protocols.MessagePack" Version="1.1.0" />
+    <PackageReference Include="PixelBattles.API.Client" Version="0.1.156" />
     <PackageReference Include="PixelBattles.Chunkler.Client" Version="1.0.0-CI-20180802-210953" />
   </ItemGroup>
 

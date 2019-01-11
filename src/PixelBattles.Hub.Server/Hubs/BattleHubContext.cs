@@ -1,13 +1,16 @@
 ﻿using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.DependencyInjection;
+using PixelBattles.Chunkler.Client;
 
-namespace PixelBattles.Server.Hubs
+namespace PixelBattles.Hub.Server.Hubs
 {
     public class BattleHubContext
     {
-        protected IHubContext<BattleHub> GameHubContext { get; set; }
+        public IHubContext<BattleHub> GameHubContext { get; set; }
 
-        protected IServiceScopeFactory ServiceScopeFactory { get; set; }
+        public IChunklerClient ChunklerClient { get; set; }
+
+        public IServiceScopeFactory ServiceScopeFactory { get; set; }
 
         public BattleHubContext(
             IServiceScopeFactory serviceScopeFactory,

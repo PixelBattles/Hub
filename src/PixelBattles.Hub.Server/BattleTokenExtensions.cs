@@ -1,7 +1,7 @@
 ﻿using Microsoft.Extensions.Configuration;
 using System;
 
-namespace PixelBattles.Server.Hubs
+namespace PixelBattles.Hub.Server
 {
     public static class BattleTokenExtensions
     {
