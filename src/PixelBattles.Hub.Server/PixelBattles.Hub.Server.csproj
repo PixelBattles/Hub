@@ -16,7 +16,7 @@
     <PackageReference Include="Microsoft.AspNetCore.SignalR" Version="1.1.0" />
     <PackageReference Include="Microsoft.AspNetCore.SignalR.Protocols.MessagePack" Version="1.1.0" />
     <PackageReference Include="PixelBattles.API.Client" Version="0.1.156" />
-    <PackageReference Include="PixelBattles.Chunkler.Client" Version="1.0.0-CI-20180802-210953" />
+    <PackageReference Include="PixelBattles.Chunkler.Client" Version="0.1.158" />
   </ItemGroup>
 
 </Project>

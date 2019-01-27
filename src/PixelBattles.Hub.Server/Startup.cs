@@ -4,7 +4,12 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
+using Orleans.Configuration;
+using PixelBattles.API.Client;
+using PixelBattles.Chunkler.Client;
+using PixelBattles.Hub.Server.Handlers;
 using PixelBattles.Hub.Server.Hubs;
 using System;
 using System.Text;
@@ -82,8 +87,17 @@ namespace PixelBattles.Hub.Server
                         }
                     };
                 });
-            
-            services.AddSingleton<BattleHubContext>();
+
+            services.Configure<ClusterOptions>(Configuration.GetSection(nameof(ClusterOptions)));
+            services.Configure<ApiClientOptions>(Configuration.GetSection(nameof(ApiClientOptions)));
+            services.AddSingleton<IApiClient, ApiClient>();
+            services.AddSingleton<MainHandler>();
+            services.AddTransient<IChunklerClient, ChunklerClient>(serviceProvider => new ChunklerClient(
+                new ChunklerClientOptions
+                {
+                    ClusterOptions = serviceProvider.GetService<IOptions<ClusterOptions>>().Value
+                },
+                serviceProvider.GetService<ILogger<ChunklerClient>>()));
         }
         
         public void Configure(IApplicationBuilder app, IHostingEnvironment env, ILoggerFactory loggerFactory)
