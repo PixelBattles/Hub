@@ -1,9 +1,7 @@
-﻿using PixelBattles.Chunkler;
-using PixelBattles.Chunkler.Client;
+﻿using PixelBattles.Chunkler.Client;
 using System;
 using System.Collections.Concurrent;
 using System.Threading;
-using System.Threading.Tasks;
 
 namespace PixelBattles.Hub.Server.Handlers
 {

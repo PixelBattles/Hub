@@ -3,6 +3,8 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 using PixelBattles.Hub.Server.Handlers;
 using System;
+using System.Collections.Concurrent;
+using System.Threading.Channels;
 using System.Threading.Tasks;
 
 namespace PixelBattles.Hub.Server.Hubs
@@ -26,32 +28,58 @@ namespace PixelBattles.Hub.Server.Hubs
         public async override Task OnConnectedAsync()
         {
             Context.Items["battleHandler"] = await _battleHandlerManager.GetOrCreateBattleHandlerAsync(GetBattleId());
+            Context.Items["subscriptions"] = new ConcurrentBag<ChunkHandler.Subscription>();
             await base.OnConnectedAsync();
         }
 
         public async override Task OnDisconnectedAsync(Exception exception)
         {
             await base.OnDisconnectedAsync(exception);
+
+            foreach (var subscription in Context.Items["subscriptions"] as ConcurrentBag<ChunkHandler.Subscription>)
+            {
+                subscription.Dispose();
+            }
         }
 
-        public Task<ChunkState> GetState(ChunkKey key)
+        public ChannelReader<ChunkStreamMessage> SubscribeToChunkStream()
         {
-            return (Context.Items["battleHandler"] as BattleHandler).GetOrCreateChunkHandler(key).GetStateAsync();
+            var channel = Channel.CreateUnbounded<ChunkStreamMessage>();
+            Context.Items["stream"] = channel;
+            return channel.Reader;
         }
 
-        public Task<ChunkState> SubscribeAndGetState(ChunkKey key)
+        public void GetState(ChunkKey key)
         {
-            throw new NotImplementedException();
+            var ignore = WriteStateAsync(key);
         }
 
-        public Task<int> Process(ChunkKey key, Chunkler.ChunkAction action)
+        public async Task<int> Process(ChunkKey key, ChunkUpdate update)
         {
-            throw new NotImplementedException();
+            return await (Context.Items["battleHandler"] as BattleHandler).GetOrCreateChunkHandler(key).ProcessAsync(update);
         }
 
-        public void Unsubscribe(ChunkKey key)
+        public void UnsubscribeFromChunk(ChunkKey key)
         {
-            throw new NotImplementedException();
+        }
+        
+        public async Task SubscribeToChunk(ChunkKey key)
+        {
+            var subscription = await (Context.Items["battleHandler"] as BattleHandler).GetOrCreateChunkHandler(key).SubscribeAsync(OnChunkUpdate);
+            (Context.Items["subscriptions"] as ConcurrentBag<ChunkHandler.Subscription>).Add(subscription);
+            var ignore = WriteStateAsync(key);
+        }
+
+        private async Task WriteStateAsync(ChunkKey key)
+        {
+            var channel = (Channel<ChunkStreamMessage>)Context.Items["stream"];
+            var state = await (Context.Items["battleHandler"] as BattleHandler).GetOrCreateChunkHandler(key).GetStateAsync();
+            await channel.Writer.WriteAsync(new ChunkStreamMessage { State = state, Key = key });
+        }
+
+        private void OnChunkUpdate(ChunkUpdate chunkUpdate)
+        {
+
         }
     }
 }

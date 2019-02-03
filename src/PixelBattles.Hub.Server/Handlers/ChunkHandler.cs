@@ -57,6 +57,23 @@ namespace PixelBattles.Hub.Server.Handlers
             }
         }
 
+        public async Task<int> ProcessAsync(ChunkUpdate chunkUpdate)
+        {
+            return await _chunklerClient.ProcessAction(
+                new Chunkler.ChunkKey
+                {
+                    BattleId = _battleId,
+                    ChunkXIndex = _chunkKey.X,
+                    ChunkYIndex = _chunkKey.Y
+                },
+                new Chunkler.ChunkAction
+                {
+                    XIndex = chunkUpdate.X,
+                    YIndex = chunkUpdate.Y,
+                    Color = chunkUpdate.Color
+                });
+        }
+
         public void Unsubscribe(Subscription subscription)
         {
             _subscriptions.TryRemove(subscription, out var ignore);
