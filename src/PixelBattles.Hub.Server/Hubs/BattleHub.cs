@@ -20,9 +20,9 @@ namespace PixelBattles.Hub.Server.Hubs
             _battleHandlerManager = battleHandlerManager ?? throw new ArgumentNullException();
         }
 
-        private Guid GetBattleId()
+        private long GetBattleId()
         {
-            return Guid.Parse(Context.User.FindFirst(BattleTokenConstants.BattleIdClaim).Value);
+            return long.Parse(Context.User.FindFirst(BattleTokenConstants.BattleIdClaim).Value);
         }
 
         public async override Task OnConnectedAsync()

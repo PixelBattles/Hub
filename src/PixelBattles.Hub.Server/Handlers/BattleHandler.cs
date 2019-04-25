@@ -7,12 +7,12 @@ namespace PixelBattles.Hub.Server.Handlers
 {
     public class BattleHandler
     {
-        private readonly Guid _battleId;
+        private readonly long _battleId;
         private readonly IChunklerClient _chunklerClient;
 
         private readonly ConcurrentDictionary<ChunkKey, Lazy<ChunkHandler>> _chunkHandlers = new ConcurrentDictionary<ChunkKey, Lazy<ChunkHandler>>();
 
-        public BattleHandler(Guid battleId, IChunklerClient chunklerClient)
+        public BattleHandler(long battleId, IChunklerClient chunklerClient)
         {
             _battleId = battleId;
             _chunklerClient = chunklerClient;

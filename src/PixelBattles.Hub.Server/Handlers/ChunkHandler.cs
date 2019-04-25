@@ -7,19 +7,19 @@ namespace PixelBattles.Hub.Server.Handlers
 {
     public class ChunkHandler
     {
-        private Guid _battleId;
+        private long _battleId;
         private ChunkKey _chunkKey;
         private IChunklerClient _chunklerClient;
 
         private ConcurrentDictionary<Subscription, Action<ChunkUpdate>> _subscriptions = new ConcurrentDictionary<Subscription, Action<ChunkUpdate>>();
 
-        public ChunkHandler(Guid battleId, ChunkKey chunkKey, IChunklerClient chunklerClient)
+        public ChunkHandler(long battleId, ChunkKey chunkKey, IChunklerClient chunklerClient)
         {
             _battleId = battleId;
             _chunkKey = chunkKey;
             _chunklerClient = chunklerClient;
 
-            _chunklerClient.SubscribeAsync(
+            _chunklerClient.SubscribeOnUpdateAsync(
             new Chunkler.ChunkKey
             {
                 BattleId = battleId,
@@ -30,7 +30,7 @@ namespace PixelBattles.Hub.Server.Handlers
 
         public async Task<ChunkState> GetStateAsync()
         {
-            var state = await _chunklerClient.GetChunkState(new Chunkler.ChunkKey
+            var state = await _chunklerClient.GetChunkStateAsync(new Chunkler.ChunkKey
             {
                 BattleId = _battleId,
                 ChunkXIndex = _chunkKey.X,
@@ -59,7 +59,7 @@ namespace PixelBattles.Hub.Server.Handlers
 
         public async Task<int> ProcessAsync(ChunkUpdate chunkUpdate)
         {
-            return await _chunklerClient.ProcessAction(
+            return await _chunklerClient.ProcessActionAsync(
                 new Chunkler.ChunkKey
                 {
                     BattleId = _battleId,
