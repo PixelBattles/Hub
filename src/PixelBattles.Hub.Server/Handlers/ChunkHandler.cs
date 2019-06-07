@@ -24,7 +24,7 @@ namespace PixelBattles.Hub.Server.Handlers
             {
                 BattleId = battleId,
                 ChunkXIndex = chunkKey.X,
-                ChunkYIndex = chunkKey.Y
+                ChunkYIndex = chunkKey.Y    
             }, OnChunkUpdate).Wait();
         }
 
