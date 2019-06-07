@@ -104,14 +104,7 @@ namespace PixelBattles.Hub.Server
         {
             if (env.IsDevelopment())
             {
-                loggerFactory.AddDebug();
-                loggerFactory.AddConsole(Configuration.GetSection("Logging"));
-
                 app.UseDeveloperExceptionPage();
-            }
-            else
-            {
-                loggerFactory.AddDebug();
             }
 
             app.UseAuthentication();

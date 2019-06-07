@@ -13,7 +13,6 @@ namespace PixelBattles.Hub.Server.Hubs
     public class BattleHub : Hub<IBattleHubClient>
     {
         private readonly MainHandler _battleHandlerManager;
-        private BattleHandler _battleHandler;
 
         public BattleHub(MainHandler battleHandlerManager)
         {
@@ -54,9 +53,14 @@ namespace PixelBattles.Hub.Server.Hubs
             var ignore = WriteStateAsync(key);
         }
 
-        public async Task<int> Process(ChunkKey key, ChunkUpdate update)
+        public async Task<int> ProcessAction(ChunkKey key, ChunkAction action)
         {
-            return await (Context.Items["battleHandler"] as BattleHandler).GetOrCreateChunkHandler(key).ProcessAsync(update);
+            return await (Context.Items["battleHandler"] as BattleHandler).GetOrCreateChunkHandler(key).ProcessAsync(action);
+        }
+
+        public async Task EnqueueAction(ChunkKey key, ChunkAction action)
+        {
+            await (Context.Items["battleHandler"] as BattleHandler).GetOrCreateChunkHandler(key).EnqueueAsync(action);
         }
 
         public void UnsubscribeFromChunk(ChunkKey key)

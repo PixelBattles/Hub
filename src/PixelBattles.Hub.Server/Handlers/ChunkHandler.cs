@@ -57,7 +57,7 @@ namespace PixelBattles.Hub.Server.Handlers
             }
         }
 
-        public async Task<int> ProcessAsync(ChunkUpdate chunkUpdate)
+        public async Task<int> ProcessAsync(ChunkAction chunkAction)
         {
             return await _chunklerClient.ProcessActionAsync(
                 new Chunkler.ChunkKey
@@ -68,9 +68,26 @@ namespace PixelBattles.Hub.Server.Handlers
                 },
                 new Chunkler.ChunkAction
                 {
-                    XIndex = chunkUpdate.X,
-                    YIndex = chunkUpdate.Y,
-                    Color = chunkUpdate.Color
+                    XIndex = chunkAction.X,
+                    YIndex = chunkAction.Y,
+                    Color = chunkAction.Color
+                });
+        }
+
+        public async Task EnqueueAsync(ChunkAction chunkAction)
+        {
+            await _chunklerClient.EnqueueActionAsync(
+                new Chunkler.ChunkKey
+                {
+                    BattleId = _battleId,
+                    ChunkXIndex = _chunkKey.X,
+                    ChunkYIndex = _chunkKey.Y
+                },
+                new Chunkler.ChunkAction
+                {
+                    XIndex = chunkAction.X,
+                    YIndex = chunkAction.Y,
+                    Color = chunkAction.Color
                 });
         }
 
