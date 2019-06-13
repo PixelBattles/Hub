@@ -11,7 +11,7 @@ namespace PixelBattles.Hub.Server.Handlers
         private ChunkKey _chunkKey;
         private IChunklerClient _chunklerClient;
 
-        private ConcurrentDictionary<Subscription, Action<ChunkUpdate>> _subscriptions = new ConcurrentDictionary<Subscription, Action<ChunkUpdate>>();
+        private ConcurrentDictionary<Subscription, Func<ChunkKey, ChunkUpdate, Task>> _subscriptions = new ConcurrentDictionary<Subscription, Func<ChunkKey, ChunkUpdate, Task>>();
 
         public ChunkHandler(long battleId, ChunkKey chunkKey, IChunklerClient chunklerClient)
         {
@@ -25,7 +25,7 @@ namespace PixelBattles.Hub.Server.Handlers
                 BattleId = battleId,
                 ChunkXIndex = chunkKey.X,
                 ChunkYIndex = chunkKey.Y    
-            }, OnChunkUpdate).Wait();
+            }, OnChunkUpdateAsync).Wait();
         }
 
         public async Task<ChunkState> GetStateAsync()
@@ -44,7 +44,7 @@ namespace PixelBattles.Hub.Server.Handlers
             };
         }
 
-        public Task<Subscription> SubscribeAsync(Action<ChunkUpdate> onUpdate)
+        public Task<Subscription> SubscribeAsync(Func<ChunkKey, ChunkUpdate, Task> onUpdate)
         {
             var subscription = new Subscription(this);
             if (_subscriptions.TryAdd(subscription, onUpdate))
@@ -96,7 +96,7 @@ namespace PixelBattles.Hub.Server.Handlers
             _subscriptions.TryRemove(subscription, out var ignore);
         }
 
-        private void OnChunkUpdate(Chunkler.ChunkUpdate chunkUpdate)
+        private async Task OnChunkUpdateAsync(Chunkler.ChunkUpdate chunkUpdate)
         {
             var update = new ChunkUpdate
             {
@@ -108,7 +108,7 @@ namespace PixelBattles.Hub.Server.Handlers
 
             foreach (var subscription in _subscriptions)
             {
-                subscription.Value(update);
+                await subscription.Value(_chunkKey, update);
             }
         }
 
