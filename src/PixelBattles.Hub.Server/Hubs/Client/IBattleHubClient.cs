@@ -1,6 +1,6 @@
 ﻿using PixelBattles.Chunkler;
 
-namespace PixelBattles.Hub.Server.Hubs
+namespace PixelBattles.Hub.Server.Hubs.Client
 {
     public interface IBattleHubClient
     {

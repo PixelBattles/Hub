@@ -11,7 +11,7 @@ namespace PixelBattles.Hub.Server.Handlers
         private ChunkKey _chunkKey;
         private IChunklerClient _chunklerClient;
 
-        private ConcurrentDictionary<Subscription, Func<ChunkKey, ChunkUpdate, Task>> _subscriptions = new ConcurrentDictionary<Subscription, Func<ChunkKey, ChunkUpdate, Task>>();
+        private ConcurrentDictionary<IChunkSubscription, Func<ChunkKey, ChunkUpdate, Task>> _subscriptions = new ConcurrentDictionary<IChunkSubscription, Func<ChunkKey, ChunkUpdate, Task>>();
 
         public ChunkHandler(long battleId, ChunkKey chunkKey, IChunklerClient chunklerClient)
         {
@@ -44,12 +44,12 @@ namespace PixelBattles.Hub.Server.Handlers
             };
         }
 
-        public Task<Subscription> SubscribeAsync(Func<ChunkKey, ChunkUpdate, Task> onUpdate)
+        public Task<IChunkSubscription> SubscribeAsync(Func<ChunkKey, ChunkUpdate, Task> onUpdate)
         {
-            var subscription = new Subscription(this);
+            var subscription = new ChunkSubscription(this);
             if (_subscriptions.TryAdd(subscription, onUpdate))
             {
-                return Task.FromResult(subscription);
+                return Task.FromResult((IChunkSubscription)subscription);
             }
             else
             {
@@ -91,7 +91,7 @@ namespace PixelBattles.Hub.Server.Handlers
                 });
         }
 
-        public void Unsubscribe(Subscription subscription)
+        public void Unsubscribe(IChunkSubscription subscription)
         {
             _subscriptions.TryRemove(subscription, out var ignore);
         }
@@ -109,21 +109,6 @@ namespace PixelBattles.Hub.Server.Handlers
             foreach (var subscription in _subscriptions)
             {
                 await subscription.Value(_chunkKey, update);
-            }
-        }
-
-        public class Subscription : IDisposable
-        {
-            private ChunkHandler _handler;
-            public Subscription(ChunkHandler handler)
-            {
-                _handler = handler ?? throw new ArgumentNullException();
-            }
-
-            public void Dispose()
-            {
-                _handler?.Unsubscribe(this);
-                _handler = null;
             }
         }
     }
