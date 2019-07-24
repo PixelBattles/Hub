@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
-using PixelBattles.Hub.Server.Handlers;
+using PixelBattles.Hub.Server.Handlers.Chunk;
+using PixelBattles.Hub.Server.Handlers.Main;
 using System.Threading.Channels;
 using System.Threading.Tasks;
 
@@ -9,7 +10,7 @@ namespace PixelBattles.Hub.Server.Hubs
     [Authorize(JwtBearerDefaults.AuthenticationScheme)]
     public class BattleHub : BaseHub
     {
-        public BattleHub(MainHandler mainHandler) : base(mainHandler)
+        public BattleHub(IMainHandler mainHandler) : base(mainHandler)
         {
 
         }
@@ -26,12 +27,14 @@ namespace PixelBattles.Hub.Server.Hubs
 
         public async Task<int> ProcessChunkAction(ChunkKey key, ChunkAction action)
         {
-            return await BattleHandler.GetOrCreateChunkHandler(key).ProcessAsync(action);
+            var chunkHandler = await BattleHandler.GetOrCreateChunkHandlerAsync(key);
+            return await chunkHandler.ProcessAsync(action);
         }
 
         public async Task EnqueueChunkAction(ChunkKey key, ChunkAction action)
         {
-            await BattleHandler.GetOrCreateChunkHandler(key).EnqueueAsync(action);
+            var chunkHandler = await BattleHandler.GetOrCreateChunkHandlerAsync(key);
+            await chunkHandler.EnqueueAsync(action);
         }
 
         public void UnsubscribeFromChunk(ChunkKey key)
@@ -45,7 +48,8 @@ namespace PixelBattles.Hub.Server.Hubs
         public async Task SubscribeToChunk(ChunkKey key)
         {
             var channel = OutgoingChannel;//copy to local for closure;
-            var subscription = await BattleHandler.GetOrCreateChunkHandler(key).SubscribeAsync((chunkKey, update) => OnChunkUpdateAsync(key, update, channel));
+            var chunkHandler = await BattleHandler.GetOrCreateChunkHandlerAsync(key);
+            var subscription = await chunkHandler.SubscribeAsync((chunkKey, update) => OnChunkUpdateAsync(key, update, channel));
             if (Subscriptions.TryAdd(key, subscription))
             {
                 await SendChunkStateAsync(key);
@@ -58,7 +62,8 @@ namespace PixelBattles.Hub.Server.Hubs
 
         private async Task SendChunkStateAsync(ChunkKey key)
         {
-            var state = await BattleHandler.GetOrCreateChunkHandler(key).GetStateAsync();
+            var chunkHandler = await BattleHandler.GetOrCreateChunkHandlerAsync(key);
+            var state = await chunkHandler.GetStateAsync();
             await OutgoingChannel.Writer.WriteAsync(new ChunkStreamMessage(key, state));
         }
 

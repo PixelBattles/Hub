@@ -1,4 +1,4 @@
-﻿namespace PixelBattles.Hub.Server.Handlers
+﻿namespace PixelBattles.Hub.Server.Handlers.Chunk
 {
     public class ChunkStreamMessage
     {

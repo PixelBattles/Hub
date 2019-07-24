@@ -11,6 +11,10 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "test", "test", "{37C90A82-4
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "PixelBattles.Hub.Server", "src\PixelBattles.Hub.Server\PixelBattles.Hub.Server.csproj", "{4FA3871F-37B5-4AD1-AFF2-25DC943825D3}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "benchmark", "benchmark", "{06E30AAA-4E3B-48CB-8C96-5F32675DE372}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PixelBattles.Hub.Server.Benchmarks", "benchmark\PixelBattles.Hub.Server.Benchmarks\PixelBattles.Hub.Server.Benchmarks.csproj", "{7078F883-6558-4E86-AC82-9DE65F49DAC5}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -21,12 +25,17 @@ Global
 		{4FA3871F-37B5-4AD1-AFF2-25DC943825D3}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{4FA3871F-37B5-4AD1-AFF2-25DC943825D3}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{4FA3871F-37B5-4AD1-AFF2-25DC943825D3}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7078F883-6558-4E86-AC82-9DE65F49DAC5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7078F883-6558-4E86-AC82-9DE65F49DAC5}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7078F883-6558-4E86-AC82-9DE65F49DAC5}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7078F883-6558-4E86-AC82-9DE65F49DAC5}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{4FA3871F-37B5-4AD1-AFF2-25DC943825D3} = {0CBC0211-8B5D-4627-BC64-A3F4D642A6A4}
+		{7078F883-6558-4E86-AC82-9DE65F49DAC5} = {06E30AAA-4E3B-48CB-8C96-5F32675DE372}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {92FE1D4D-731F-46E2-B2D6-DE83EB22C174}

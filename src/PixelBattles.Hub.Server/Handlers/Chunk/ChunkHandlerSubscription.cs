@@ -1,11 +1,11 @@
 ﻿using System;
 
-namespace PixelBattles.Hub.Server.Handlers
+namespace PixelBattles.Hub.Server.Handlers.Chunk
 {
-    public class ChunkSubscription : IChunkSubscription
+    public class ChunkHandlerSubscription : IChunkHandlerSubscription
     {
         private ChunkHandler _handler;
-        public ChunkSubscription(ChunkHandler handler)
+        public ChunkHandlerSubscription(ChunkHandler handler)
         {
             _handler = handler ?? throw new ArgumentNullException();
         }

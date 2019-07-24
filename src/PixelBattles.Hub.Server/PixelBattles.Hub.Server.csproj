@@ -15,8 +15,9 @@
     <PackageReference Include="Microsoft.AspNetCore.All" />
     <PackageReference Include="Microsoft.AspNetCore.SignalR" Version="1.1.0" />
     <PackageReference Include="Microsoft.AspNetCore.SignalR.Protocols.MessagePack" Version="1.1.5" />
-    <PackageReference Include="PixelBattles.API.Client" Version="0.1.168" />
-    <PackageReference Include="PixelBattles.Chunkler.Client" Version="0.1.169" />
+    <PackageReference Include="Nito.AsyncEx.Coordination" Version="5.0.0" />
+    <PackageReference Include="PixelBattles.API.Client" Version="0.1.182" />
+    <PackageReference Include="PixelBattles.Chunkler.Client" Version="0.1.183" />
   </ItemGroup>
 
 </Project>

@@ -1,5 +1,7 @@
 ﻿using Microsoft.AspNetCore.SignalR;
-using PixelBattles.Hub.Server.Handlers;
+using PixelBattles.Hub.Server.Handlers.Battle;
+using PixelBattles.Hub.Server.Handlers.Chunk;
+using PixelBattles.Hub.Server.Handlers.Main;
 using PixelBattles.Hub.Server.Hubs.Client;
 using System;
 using System.Collections.Concurrent;
@@ -14,23 +16,24 @@ namespace PixelBattles.Hub.Server.Hubs
         private const string SubscriptionsKey = "subscriptions";
         private const string OutgoingStreamKey = "stream";
 
-        private readonly MainHandler _mainHandler;
+        private readonly IMainHandler _mainHandler;
 
-        public BaseHub(MainHandler mainHandler)
+        public BaseHub(IMainHandler mainHandler)
         {
             _mainHandler = mainHandler ?? throw new ArgumentNullException(nameof(mainHandler));
         }
 
         public async override Task OnConnectedAsync()
         {
-            BattleHandler = await _mainHandler.GetOrCreateBattleHandlerAsync(BattleId);
-            Subscriptions = new ConcurrentDictionary<ChunkKey, IChunkSubscription>();
+            BattleHandler = await _mainHandler.GetBattleHandlerAndSubscribeAsync(BattleId);
+            Subscriptions = new ConcurrentDictionary<ChunkKey, IChunkHandlerSubscription>();
             OutgoingChannel = Channel.CreateUnbounded<ChunkStreamMessage>();
             await base.OnConnectedAsync();
         }
 
         public async override Task OnDisconnectedAsync(Exception exception)
         {
+            BattleHandler?.DecrementSubscriptionCounter();
             foreach (var subscription in Subscriptions.Values)
             {
                 subscription.Dispose();
@@ -53,14 +56,14 @@ namespace PixelBattles.Hub.Server.Hubs
             }
         }
 
-        private ConcurrentDictionary<ChunkKey, IChunkSubscription> _subscriptions;
-        protected ConcurrentDictionary<ChunkKey, IChunkSubscription> Subscriptions
+        private ConcurrentDictionary<ChunkKey, IChunkHandlerSubscription> _subscriptions;
+        protected ConcurrentDictionary<ChunkKey, IChunkHandlerSubscription> Subscriptions
         {
             get
             {
                 if (_subscriptions == null)
                 {
-                    _subscriptions = (ConcurrentDictionary<ChunkKey, IChunkSubscription>)Context.Items[SubscriptionsKey];
+                    _subscriptions = (ConcurrentDictionary<ChunkKey, IChunkHandlerSubscription>)Context.Items[SubscriptionsKey];
                 }
                 return _subscriptions;
             }
@@ -71,14 +74,14 @@ namespace PixelBattles.Hub.Server.Hubs
             }
         }
 
-        private BattleHandler _battleHandler;
-        protected BattleHandler BattleHandler
+        private IBattleHandler _battleHandler;
+        protected IBattleHandler BattleHandler
         {
             get
             {
                 if (_battleHandler == null)
                 {
-                    _battleHandler = (BattleHandler)Context.Items[BattleHandlerKey];
+                    _battleHandler = (IBattleHandler)Context.Items[BattleHandlerKey];
                 }
                 return _battleHandler;
             }
