@@ -10,7 +10,7 @@ namespace PixelBattles.Hub.Server.Handlers.Battle
         long BattleId { get; }
         long LastUpdatedTicksUTC { get; }
 
-        Task<ChunkHandler> GetOrCreateChunkHandlerAsync(ChunkKey chunkKey);
+        Task<IChunkHandler> GetOrCreateChunkHandlerAsync(ChunkKey chunkKey);
         Task<(int chunkHandlersNotCompacted, int chunkHandlersCompacted)> CompactChunkHandlersAsync(long unusedChunkHanlderTicksUTCLimit);
         Task<(int chunkHandlersNotRemoved, int chunkHandlersRemoved)> ClearCompactedChunkHandlersAsync();
         void IncrementSubscriptionCounter();

@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace PixelBattles.Hub.Server.Handlers.Chunk
 {
-    public class ChunkHandler
+    public class ChunkHandler : IChunkHandler
     {
         private long _battleId;
         private IChunklerClient _chunklerClient;

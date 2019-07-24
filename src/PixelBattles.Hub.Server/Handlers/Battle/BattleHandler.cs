@@ -13,8 +13,8 @@ namespace PixelBattles.Hub.Server.Handlers.Battle
     {   
         private readonly IChunklerClient _chunklerClient;
         private readonly IChunkHandlerFactory _chunkHandlerFactory;
-        private readonly ConcurrentDictionary<ChunkKey, AsyncLazy<ChunkHandler>> _chunkHandlers;
-        private readonly Dictionary<ChunkKey, AsyncLazy<ChunkHandler>> _compactedChunkHandlers;
+        private readonly ConcurrentDictionary<ChunkKey, AsyncLazy<IChunkHandler>> _chunkHandlers;
+        private readonly Dictionary<ChunkKey, AsyncLazy<IChunkHandler>> _compactedChunkHandlers;
 
         private int _subscriptionCounter;
         public int SubscriptionCounter => _subscriptionCounter;
@@ -32,18 +32,18 @@ namespace PixelBattles.Hub.Server.Handlers.Battle
             _lastUpdatedTicksUTC = DateTime.UtcNow.Ticks;
             _chunklerClient = chunklerClient ?? throw new ArgumentNullException(nameof(chunklerClient));
             _chunkHandlerFactory = chunkHandlerFactory ?? throw new ArgumentNullException(nameof(chunkHandlerFactory));
-            _chunkHandlers = new ConcurrentDictionary<ChunkKey, AsyncLazy<ChunkHandler>>();
-            _compactedChunkHandlers = new Dictionary<ChunkKey, AsyncLazy<ChunkHandler>>();
+            _chunkHandlers = new ConcurrentDictionary<ChunkKey, AsyncLazy<IChunkHandler>>();
+            _compactedChunkHandlers = new Dictionary<ChunkKey, AsyncLazy<IChunkHandler>>();
         }
 
-        public async Task<ChunkHandler> GetOrCreateChunkHandlerAsync(ChunkKey chunkKey)
+        public async Task<IChunkHandler> GetOrCreateChunkHandlerAsync(ChunkKey chunkKey)
         {
             //we do not need an accurate value
             _lastUpdatedTicksUTC = DateTime.UtcNow.Ticks;
 
             var chunkHandler = await _chunkHandlers.GetOrAdd(
                 key: chunkKey,
-                valueFactory: key => new AsyncLazy<ChunkHandler>(
+                valueFactory: key => new AsyncLazy<IChunkHandler>(
                     () => _chunkHandlerFactory.CreateChunkHandlerAsync(_battleId, chunkKey, _chunklerClient),
                     AsyncLazyFlags.RetryOnFailure));
 
@@ -97,7 +97,7 @@ namespace PixelBattles.Hub.Server.Handlers.Battle
                 return (chunkHandlersNotRemoved, chunkHandlersRemoved);
             }
 
-            var chunkHandlersToDelete = new List<ChunkHandler>(_compactedChunkHandlers.Count);
+            var chunkHandlersToDelete = new List<IChunkHandler>(_compactedChunkHandlers.Count);
             foreach (var chunkHandlerLazy in _compactedChunkHandlers)
             {
                 var chunkHandler = await chunkHandlerLazy.Value;
