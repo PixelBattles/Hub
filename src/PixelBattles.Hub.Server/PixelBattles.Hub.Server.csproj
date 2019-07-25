@@ -20,4 +20,12 @@
     <PackageReference Include="PixelBattles.Chunkler.Client" Version="0.1.183" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Handlers\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\PixelBattles.Hub.Server.Handling\PixelBattles.Hub.Server.Handling.csproj" />
+  </ItemGroup>
+
 </Project>

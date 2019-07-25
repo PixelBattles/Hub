@@ -6,19 +6,24 @@ using System.Threading.Tasks;
 
 namespace PixelBattles.Hub.Server.Handlers.Chunk
 {
-    public class ChunkHandler : IChunkHandler
+    internal class ChunkHandler : IChunkHandler
     {
-        private long _battleId;
-        private IChunklerClient _chunklerClient;
-        private ConcurrentDictionary<IChunkHandlerSubscription, Func<ChunkKey, ChunkUpdate, Task>> _subscriptions;
+        private readonly long _battleId;
+        private readonly IChunklerClient _chunklerClient;
+        private readonly ConcurrentDictionary<IChunkHandlerSubscription, Func<ChunkKey, ChunkUpdate, Task>> _subscriptions;
         private IChunkSubscription _chunkSubscription;
+
+        private int _subscriptionCounter;
+        public int SubscriptionCounter => _subscriptionCounter;
+
+        private readonly ChunkKey _chunkKey;
+        public ChunkKey ChunkKey => _chunkKey;
 
         public long _lastUpdatedTicksUTC;
         public long LastUpdatedTicksUTC => _lastUpdatedTicksUTC;
-        private int _subscriptionCounter;
-        public int SubscriptionCounter => _subscriptionCounter;
-        private readonly ChunkKey _chunkKey;
-        public ChunkKey ChunkKey => _chunkKey;
+
+        private bool _isClosing;
+        public bool IsClosing => Volatile.Read(ref _isClosing);
 
         public ChunkHandler(long battleId, ChunkKey chunkKey, IChunklerClient chunklerClient)
         {
@@ -49,7 +54,7 @@ namespace PixelBattles.Hub.Server.Handlers.Chunk
             };
         }
 
-        public Task<IChunkHandlerSubscription> SubscribeAsync(Func<ChunkKey, ChunkUpdate, Task> onUpdate)
+        public ChunkHandlerSubscription CreateSubscription(Func<ChunkKey, ChunkUpdate, Task> onUpdate)
         {
             //we do not need an accurate value
             _lastUpdatedTicksUTC = DateTime.UtcNow.Ticks;
@@ -57,12 +62,11 @@ namespace PixelBattles.Hub.Server.Handlers.Chunk
             var subscription = new ChunkHandlerSubscription(this);
             if (_subscriptions.TryAdd(subscription, onUpdate))
             {
-                Interlocked.Increment(ref _subscriptionCounter);
-                return Task.FromResult((IChunkHandlerSubscription)subscription);
+                return subscription;
             }
             else
             {
-                throw new Exception();
+                throw new InvalidOperationException("Error during add subscription handler to chunk.");
             }
         }
 
@@ -106,7 +110,7 @@ namespace PixelBattles.Hub.Server.Handlers.Chunk
                 });
         }
 
-        public void Unsubscribe(IChunkHandlerSubscription subscription)
+        public void Unsubscribe(ChunkHandlerSubscription subscription)
         {
             //we do not need an accurate value
             _lastUpdatedTicksUTC = DateTime.UtcNow.Ticks;
@@ -141,6 +145,11 @@ namespace PixelBattles.Hub.Server.Handlers.Chunk
             await _chunkSubscription.CloseAsync();
         }
 
+        public void MarkAsClosing()
+        {
+            Volatile.Write(ref _isClosing, true);
+        }
+
         public async Task SubscribeToChunkAsync()
         {
             _chunkSubscription = await _chunklerClient.SubscribeOnChunkUpdateAsync(
@@ -151,6 +160,16 @@ namespace PixelBattles.Hub.Server.Handlers.Chunk
                     ChunkYIndex = _chunkKey.Y
                 },
                 onUpdate: OnChunkUpdateAsync);
+        }
+
+        public void IncrementSubscriptionCounter()
+        {
+            Interlocked.Increment(ref _subscriptionCounter);
+        }
+
+        public void DecrementSubscriptionCounter()
+        {
+            Interlocked.Decrement(ref _subscriptionCounter);
         }
     }
 }

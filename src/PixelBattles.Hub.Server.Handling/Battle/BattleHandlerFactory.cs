@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace PixelBattles.Hub.Server.Handlers.Battle
 {
-    public class BattleHandlerFactory : IBattleHandlerFactory
+    internal class BattleHandlerFactory : IBattleHandlerFactory
     {
         private IServiceProvider _serviceProvider;
         private IApiClient _apiClient;
@@ -18,7 +18,7 @@ namespace PixelBattles.Hub.Server.Handlers.Battle
             _apiClient = apiClient ?? throw new ArgumentNullException(nameof(apiClient));
         }
 
-        public async Task<IBattleHandler> CreateBattleHandlerAsync(long battleId)
+        public async Task<BattleHandler> CreateBattleHandlerAsync(long battleId)
         {
             try
             {

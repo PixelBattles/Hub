@@ -1,4 +1,4 @@
-﻿namespace PixelBattles.Hub.Server.Handlers.Main
+﻿namespace PixelBattles.Hub.Server.Handling.Main
 {
     public class MainHandlerOptions
     {

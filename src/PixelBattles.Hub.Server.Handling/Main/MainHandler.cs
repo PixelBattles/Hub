@@ -9,13 +9,13 @@ using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace PixelBattles.Hub.Server.Handlers.Main
+namespace PixelBattles.Hub.Server.Handling.Main
 {
-    public class MainHandler : IMainHandler
+    internal class MainHandler : IMainHandler
     {
         private readonly IBattleHandlerFactory _battleHandlerFactory;
-        private readonly ConcurrentDictionary<long, AsyncLazy<IBattleHandler>> _battleHandlers;
-        private readonly Dictionary<long, IBattleHandler> _compactedBattleHandlers;
+        private readonly ConcurrentDictionary<long, AsyncLazy<BattleHandler>> _battleHandlers;
+        private readonly Dictionary<long, BattleHandler> _compactedBattleHandlers;
         private readonly MainHandlerOptions _mainHandlerOptions;
         private readonly ILogger _logger;
 
@@ -31,30 +31,39 @@ namespace PixelBattles.Hub.Server.Handlers.Main
             _mainHandlerOptions = mainHandlerOptions.Value ?? throw new ArgumentNullException(nameof(mainHandlerOptions));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
-            _battleHandlers = new ConcurrentDictionary<long, AsyncLazy<IBattleHandler>>();
-            _compactedBattleHandlers = new Dictionary<long, IBattleHandler>();
+            _battleHandlers = new ConcurrentDictionary<long, AsyncLazy<BattleHandler>>();
+            _compactedBattleHandlers = new Dictionary<long, BattleHandler>();
 
             _cancellationTokenSource = new CancellationTokenSource();
             _compactionTask = Task.Factory.StartNew(RunCompactionAsync, TaskCreationOptions.LongRunning);
         }
 
-        public async Task<IBattleHandler> GetBattleHandlerAndSubscribeAsync(long battleId)
+        public async Task<IBattleHandlerSubscription> GetBattleHandlerAndSubscribeAsync(long battleId)
         {
-            var battleHandlerLazy = _battleHandlers.GetOrAdd(
-                key: battleId,
-                valueFactory: key => new AsyncLazy<IBattleHandler>(
-                    factory: () => _battleHandlerFactory.CreateBattleHandlerAsync(battleId),
-                    flags: AsyncLazyFlags.RetryOnFailure));
-
-            var battleHandler = await battleHandlerLazy;
-
-            if (battleHandler == null)
+            while (true)
             {
-                throw new InvalidOperationException($"Battle {battleId} is not found.");
-            }
+                var battleHandlerLazy = _battleHandlers.GetOrAdd(
+                    key: battleId,
+                    valueFactory: key => new AsyncLazy<BattleHandler>(
+                        factory: () => _battleHandlerFactory.CreateBattleHandlerAsync(battleId),
+                        flags: AsyncLazyFlags.RetryOnFailure));
 
-            battleHandler.IncrementSubscriptionCounter();
-            return battleHandler;
+                var battleHandler = await battleHandlerLazy;
+
+                if (battleHandler == null)
+                {
+                    throw new InvalidOperationException($"Battle {battleId} is not found.");
+                }
+
+                battleHandler.IncrementSubscriptionCounter();
+                if (battleHandler.IsClosing)
+                {
+                    battleHandler.DecrementSubscriptionCounter();
+                    continue;
+                }
+                var subscription = new BattleHandlerSubscription(battleHandler);
+                return subscription;
+            }
         }
 
         private async Task<(int battleHandlersNotCompacted, int battleHandlersCompacted)> CompactBattleHandlersAsync()
@@ -75,6 +84,7 @@ namespace PixelBattles.Hub.Server.Handlers.Main
                 {
                     if (_battleHandlers.TryRemove(battleHandler.BattleId, out var ignore))
                     {
+                        battleHandler.MarkAsClosing();
                         _compactedBattleHandlers.Add(battleHandler.BattleId, battleHandler);
                         ++battleHandlersCompacted;
                     }
@@ -131,7 +141,7 @@ namespace PixelBattles.Hub.Server.Handlers.Main
             return (battleHandlersNotRemoved, battleHandlersRemoved);
         }
 
-        private async Task<(int activeChunkHandlersLeft, int compactedChunkHandlersLeft)> CompactBattleHandlerAsync(long chunkIncativityUTCLimit, IBattleHandler battleHandler)
+        private async Task<(int activeChunkHandlersLeft, int compactedChunkHandlersLeft)> CompactBattleHandlerAsync(long chunkIncativityUTCLimit, BattleHandler battleHandler)
         {
             var (chunkHandlersNotRemoved, chunkHandlersRemoved) = await battleHandler.ClearCompactedChunkHandlersAsync();
             var (chunkHandlersNotCompacted, chunkHandlersCompacted) = await battleHandler.CompactChunkHandlersAsync(chunkIncativityUTCLimit);
@@ -169,7 +179,15 @@ namespace PixelBattles.Hub.Server.Handlers.Main
         public void Dispose()
         {
             _cancellationTokenSource.Cancel();
-            _compactionTask.Wait();
+            try
+            {
+                _compactionTask.Wait();
+            }
+            catch (Exception)
+            {
+                //ignore
+            }
+            
             _compactionTask.Dispose();
             _cancellationTokenSource.Dispose();
 

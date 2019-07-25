@@ -1,10 +1,10 @@
 ﻿using Microsoft.AspNetCore.SignalR;
 using PixelBattles.Hub.Server.Handlers.Battle;
 using PixelBattles.Hub.Server.Handlers.Chunk;
-using PixelBattles.Hub.Server.Handlers.Main;
+using PixelBattles.Hub.Server.Handling.Main;
 using PixelBattles.Hub.Server.Hubs.Client;
 using System;
-using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Threading.Channels;
 using System.Threading.Tasks;
 
@@ -12,7 +12,7 @@ namespace PixelBattles.Hub.Server.Hubs
 {
     public abstract class BaseHub: Hub<IBattleHubClient>
     {
-        private const string BattleHandlerKey = "battleHandler";
+        private const string BattleHandlerSubscriptionKey = "battleHandlerSubscription";
         private const string SubscriptionsKey = "subscriptions";
         private const string OutgoingStreamKey = "stream";
 
@@ -25,20 +25,20 @@ namespace PixelBattles.Hub.Server.Hubs
 
         public async override Task OnConnectedAsync()
         {
-            BattleHandler = await _mainHandler.GetBattleHandlerAndSubscribeAsync(BattleId);
-            Subscriptions = new ConcurrentDictionary<ChunkKey, IChunkHandlerSubscription>();
+            BattleHandlerSubscription = await _mainHandler.GetBattleHandlerAndSubscribeAsync(BattleId);
+            Subscriptions = new Dictionary<ChunkKey, IChunkHandlerSubscription>();
             OutgoingChannel = Channel.CreateUnbounded<ChunkStreamMessage>();
             await base.OnConnectedAsync();
         }
 
         public async override Task OnDisconnectedAsync(Exception exception)
         {
-            BattleHandler?.DecrementSubscriptionCounter();
             foreach (var subscription in Subscriptions.Values)
             {
                 subscription.Dispose();
             }
             Subscriptions.Clear();
+            BattleHandlerSubscription.Dispose();
 
             await base.OnDisconnectedAsync(exception);
         }
@@ -56,14 +56,14 @@ namespace PixelBattles.Hub.Server.Hubs
             }
         }
 
-        private ConcurrentDictionary<ChunkKey, IChunkHandlerSubscription> _subscriptions;
-        protected ConcurrentDictionary<ChunkKey, IChunkHandlerSubscription> Subscriptions
+        private Dictionary<ChunkKey, IChunkHandlerSubscription> _subscriptions;
+        protected Dictionary<ChunkKey, IChunkHandlerSubscription> Subscriptions
         {
             get
             {
                 if (_subscriptions == null)
                 {
-                    _subscriptions = (ConcurrentDictionary<ChunkKey, IChunkHandlerSubscription>)Context.Items[SubscriptionsKey];
+                    _subscriptions = (Dictionary<ChunkKey, IChunkHandlerSubscription>)Context.Items[SubscriptionsKey];
                 }
                 return _subscriptions;
             }
@@ -81,14 +81,27 @@ namespace PixelBattles.Hub.Server.Hubs
             {
                 if (_battleHandler == null)
                 {
-                    _battleHandler = (IBattleHandler)Context.Items[BattleHandlerKey];
+                    _battleHandler = ((IBattleHandlerSubscription)Context.Items[BattleHandlerSubscriptionKey]).BattleHandler;
                 }
                 return _battleHandler;
             }
+        }
+
+        private IBattleHandlerSubscription _battleHandlerSubscription;
+        protected IBattleHandlerSubscription BattleHandlerSubscription
+        {
+            get
+            {
+                if (_battleHandlerSubscription == null)
+                {
+                    _battleHandlerSubscription = (IBattleHandlerSubscription)Context.Items[BattleHandlerSubscriptionKey];
+                }
+                return _battleHandlerSubscription;
+            }
             private set
             {
-                _battleHandler = value;
-                Context.Items[BattleHandlerKey] = value;
+                _battleHandlerSubscription = value;
+                Context.Items[BattleHandlerSubscriptionKey] = value;
             }
         }
 

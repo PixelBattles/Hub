@@ -1,7 +1,8 @@
 ﻿using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using PixelBattles.Hub.Server.Handlers.Chunk;
-using PixelBattles.Hub.Server.Handlers.Main;
+using PixelBattles.Hub.Server.Handling.Main;
+using System;
 using System.Threading.Channels;
 using System.Threading.Tasks;
 
@@ -22,24 +23,44 @@ namespace PixelBattles.Hub.Server.Hubs
 
         public async Task RequestChunkState(ChunkKey key)
         {
-            await SendChunkStateAsync(key);
+            if (Subscriptions.TryGetValue(key, out var chunkHandlerSubscription))
+            {
+                await SendChunkStateAsync(key, chunkHandlerSubscription);
+            }
+            else
+            {
+                throw new InvalidOperationException("Can't access chunk that not subscribed.");
+            }
         }
 
         public async Task<int> ProcessChunkAction(ChunkKey key, ChunkAction action)
         {
-            var chunkHandler = await BattleHandler.GetOrCreateChunkHandlerAsync(key);
-            return await chunkHandler.ProcessAsync(action);
+            if (Subscriptions.TryGetValue(key, out var chunkHandlerSubscription))
+            {
+                return await chunkHandlerSubscription.ChunkHandler.ProcessAsync(action);
+            }
+            else
+            {
+                throw new InvalidOperationException("Can't access chunk that not subscribed.");
+            }
         }
 
         public async Task EnqueueChunkAction(ChunkKey key, ChunkAction action)
         {
-            var chunkHandler = await BattleHandler.GetOrCreateChunkHandlerAsync(key);
-            await chunkHandler.EnqueueAsync(action);
+            if (Subscriptions.TryGetValue(key, out var chunkHandlerSubscription))
+            {
+                await chunkHandlerSubscription.ChunkHandler.EnqueueAsync(action);
+                return;
+            }
+            else
+            {
+                throw new InvalidOperationException("Can't access chunk that not subscribed.");
+            }
         }
 
         public void UnsubscribeFromChunk(ChunkKey key)
         {
-            if (Subscriptions.TryRemove(key, out var subscription))
+            if (Subscriptions.Remove(key, out var subscription))
             {
                 subscription.Dispose();
             }
@@ -47,23 +68,27 @@ namespace PixelBattles.Hub.Server.Hubs
         
         public async Task SubscribeToChunk(ChunkKey key)
         {
-            var channel = OutgoingChannel;//copy to local for closure;
-            var chunkHandler = await BattleHandler.GetOrCreateChunkHandlerAsync(key);
-            var subscription = await chunkHandler.SubscribeAsync((chunkKey, update) => OnChunkUpdateAsync(key, update, channel));
-            if (Subscriptions.TryAdd(key, subscription))
+            if (Subscriptions.ContainsKey(key))
             {
-                await SendChunkStateAsync(key);
+                return;
+            }
+
+            var channel = OutgoingChannel;//copy to local for closure;
+            var chunkHandlerSubscription = await BattleHandler.GetChunkHandlerAndSubscribeAsync(key, (chunkKey, update) => OnChunkUpdateAsync(key, update, channel));
+            if (Subscriptions.TryAdd(key, chunkHandlerSubscription))
+            {
+                await SendChunkStateAsync(key, chunkHandlerSubscription);
             }
             else
             {
-                subscription.Dispose();
+                chunkHandlerSubscription.Dispose();
+                throw new InvalidOperationException("Duplicate subscription is detected.");
             }
         }
 
-        private async Task SendChunkStateAsync(ChunkKey key)
+        private async Task SendChunkStateAsync(ChunkKey key, IChunkHandlerSubscription chunkHandlerSubscription)
         {
-            var chunkHandler = await BattleHandler.GetOrCreateChunkHandlerAsync(key);
-            var state = await chunkHandler.GetStateAsync();
+            var state = await chunkHandlerSubscription.ChunkHandler.GetStateAsync();
             await OutgoingChannel.Writer.WriteAsync(new ChunkStreamMessage(key, state));
         }
 

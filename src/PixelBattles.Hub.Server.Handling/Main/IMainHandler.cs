@@ -2,10 +2,10 @@
 using System;
 using System.Threading.Tasks;
 
-namespace PixelBattles.Hub.Server.Handlers.Main
+namespace PixelBattles.Hub.Server.Handling.Main
 {
     public interface IMainHandler : IDisposable
     {
-        Task<IBattleHandler> GetBattleHandlerAndSubscribeAsync(long battleId);
+        Task<IBattleHandlerSubscription> GetBattleHandlerAndSubscribeAsync(long battleId);
     }
 }

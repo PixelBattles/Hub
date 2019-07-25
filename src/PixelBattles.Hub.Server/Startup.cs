@@ -9,13 +9,11 @@ using Microsoft.IdentityModel.Tokens;
 using Orleans.Configuration;
 using PixelBattles.API.Client;
 using PixelBattles.Chunkler.Client;
-using PixelBattles.Hub.Server.Handlers;
-using PixelBattles.Hub.Server.Handlers.Battle;
-using PixelBattles.Hub.Server.Handlers.Chunk;
-using PixelBattles.Hub.Server.Handlers.Main;
+using PixelBattles.Hub.Server.Handling.Main;
 using PixelBattles.Hub.Server.Hubs;
 using System;
 using System.Text;
+using PixelBattles.Hub.Server.Handling;
 using System.Threading.Tasks;
 
 namespace PixelBattles.Hub.Server
@@ -94,10 +92,8 @@ namespace PixelBattles.Hub.Server
             services.Configure<ClusterOptions>(Configuration.GetSection(nameof(ClusterOptions)));
             services.Configure<ApiClientOptions>(Configuration.GetSection(nameof(ApiClientOptions)));
             services.Configure<MainHandlerOptions>(Configuration.GetSection(nameof(MainHandlerOptions)));
+            services.AddHandling();
             services.AddSingleton<IApiClient, ApiClient>();
-            services.AddSingleton<IMainHandler, MainHandler>();
-            services.AddSingleton<IBattleHandlerFactory, BattleHandlerFactory>();
-            services.AddSingleton<IChunkHandlerFactory, ChunkHandlerFactory>();
             services.AddTransient<IChunklerClient, ChunklerClient>(serviceProvider => new ChunklerClient(
                 new ChunklerClientOptions
                 {

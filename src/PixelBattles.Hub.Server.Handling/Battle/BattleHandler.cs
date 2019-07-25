@@ -9,12 +9,12 @@ using System.Threading.Tasks;
 
 namespace PixelBattles.Hub.Server.Handlers.Battle
 {
-    public class BattleHandler: IBattleHandler
-    {   
+    internal class BattleHandler : IBattleHandler
+    {
         private readonly IChunklerClient _chunklerClient;
         private readonly IChunkHandlerFactory _chunkHandlerFactory;
-        private readonly ConcurrentDictionary<ChunkKey, AsyncLazy<IChunkHandler>> _chunkHandlers;
-        private readonly Dictionary<ChunkKey, AsyncLazy<IChunkHandler>> _compactedChunkHandlers;
+        private readonly ConcurrentDictionary<ChunkKey, AsyncLazy<ChunkHandler>> _chunkHandlers;
+        private readonly Dictionary<ChunkKey, AsyncLazy<ChunkHandler>> _compactedChunkHandlers;
 
         private int _subscriptionCounter;
         public int SubscriptionCounter => _subscriptionCounter;
@@ -22,39 +22,53 @@ namespace PixelBattles.Hub.Server.Handlers.Battle
         private readonly long _battleId;
         public long BattleId => _battleId;
 
-        public long _lastUpdatedTicksUTC;
+        private long _lastUpdatedTicksUTC;
         public long LastUpdatedTicksUTC => _lastUpdatedTicksUTC;
+        
+        private bool _isClosing;
+        public bool IsClosing => Volatile.Read(ref _isClosing);
 
         public BattleHandler(long battleId, IChunklerClient chunklerClient, IChunkHandlerFactory chunkHandlerFactory)
         {
+            _isClosing = false;
             _battleId = battleId;
             _subscriptionCounter = 0;
             _lastUpdatedTicksUTC = DateTime.UtcNow.Ticks;
             _chunklerClient = chunklerClient ?? throw new ArgumentNullException(nameof(chunklerClient));
             _chunkHandlerFactory = chunkHandlerFactory ?? throw new ArgumentNullException(nameof(chunkHandlerFactory));
-            _chunkHandlers = new ConcurrentDictionary<ChunkKey, AsyncLazy<IChunkHandler>>();
-            _compactedChunkHandlers = new Dictionary<ChunkKey, AsyncLazy<IChunkHandler>>();
-        }
-
-        public async Task<IChunkHandler> GetOrCreateChunkHandlerAsync(ChunkKey chunkKey)
-        {
-            //we do not need an accurate value
-            _lastUpdatedTicksUTC = DateTime.UtcNow.Ticks;
-
-            var chunkHandler = await _chunkHandlers.GetOrAdd(
-                key: chunkKey,
-                valueFactory: key => new AsyncLazy<IChunkHandler>(
-                    () => _chunkHandlerFactory.CreateChunkHandlerAsync(_battleId, chunkKey, _chunklerClient),
-                    AsyncLazyFlags.RetryOnFailure));
-
-            if (chunkHandler == null)
-            {
-                throw new InvalidOperationException($"Chunk {chunkKey} is not found.");
-            }
-
-            return chunkHandler;
+            _chunkHandlers = new ConcurrentDictionary<ChunkKey, AsyncLazy<ChunkHandler>>();
+            _compactedChunkHandlers = new Dictionary<ChunkKey, AsyncLazy<ChunkHandler>>();
         }
         
+        public async Task<IChunkHandlerSubscription> GetChunkHandlerAndSubscribeAsync(ChunkKey chunkKey, Func<ChunkKey, ChunkUpdate, Task> onUpdate)
+        {
+            while (true)
+            {
+                var chunkHandlerLazy = _chunkHandlers.GetOrAdd(
+                    key: chunkKey,
+                    valueFactory: key => new AsyncLazy<ChunkHandler>(
+                        factory: () => _chunkHandlerFactory.CreateChunkHandlerAsync(_battleId, chunkKey, _chunklerClient),
+                        flags: AsyncLazyFlags.RetryOnFailure));
+
+                var chunkHandler = await chunkHandlerLazy;
+
+                if (chunkHandler == null)
+                {
+                    throw new InvalidOperationException($"Chunk {chunkKey} is not found.");
+                }
+
+                chunkHandler.IncrementSubscriptionCounter();
+                if (chunkHandler.IsClosing)
+                {
+                    chunkHandler.DecrementSubscriptionCounter();
+                    continue;
+                }
+                
+                var subscription = chunkHandler.CreateSubscription(onUpdate);
+                return subscription;
+            }
+        }
+
         public async Task<(int chunkHandlersNotCompacted, int chunkHandlersCompacted)> CompactChunkHandlersAsync(long unusedChunkHanlderTicksUTCLimit)
         {
             int chunkHandlersNotCompacted = 0;
@@ -72,6 +86,7 @@ namespace PixelBattles.Hub.Server.Handlers.Battle
                 {
                     if (_chunkHandlers.TryRemove(chunkHandlerKVPair.Key, out var ignore))
                     {
+                        chunkHandler.MarkAsClosing();
                         _compactedChunkHandlers.Add(chunkHandlerKVPair.Key, chunkHandlerKVPair.Value);
                         ++chunkHandlersCompacted;
                     }
@@ -97,7 +112,7 @@ namespace PixelBattles.Hub.Server.Handlers.Battle
                 return (chunkHandlersNotRemoved, chunkHandlersRemoved);
             }
 
-            var chunkHandlersToDelete = new List<IChunkHandler>(_compactedChunkHandlers.Count);
+            var chunkHandlersToDelete = new List<ChunkHandler>(_compactedChunkHandlers.Count);
             foreach (var chunkHandlerLazy in _compactedChunkHandlers)
             {
                 var chunkHandler = await chunkHandlerLazy.Value;
@@ -131,6 +146,11 @@ namespace PixelBattles.Hub.Server.Handlers.Battle
         public void DecrementSubscriptionCounter()
         {
             Interlocked.Decrement(ref _subscriptionCounter);
+        }
+
+        public void MarkAsClosing()
+        {
+            Volatile.Write(ref _isClosing, true);
         }
 
         public void Dispose()

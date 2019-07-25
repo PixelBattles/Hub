@@ -2,9 +2,10 @@
 
 namespace PixelBattles.Hub.Server.Handlers.Chunk
 {
-    public class ChunkHandlerSubscription : IChunkHandlerSubscription
+    internal class ChunkHandlerSubscription : IChunkHandlerSubscription
     {
         private ChunkHandler _handler;
+        public IChunkHandler ChunkHandler => _handler;
         public ChunkHandlerSubscription(ChunkHandler handler)
         {
             _handler = handler ?? throw new ArgumentNullException();
