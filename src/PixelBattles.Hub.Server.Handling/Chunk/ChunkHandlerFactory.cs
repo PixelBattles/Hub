@@ -1,4 +1,5 @@
 ﻿using PixelBattles.Chunkler.Client;
+using PixelBattles.Hub.Server.Handling.Chunk;
 using System.Threading.Tasks;
 
 namespace PixelBattles.Hub.Server.Handlers.Chunk
@@ -9,9 +10,9 @@ namespace PixelBattles.Hub.Server.Handlers.Chunk
         {
         }
 
-        public async Task<ChunkHandler> CreateChunkHandlerAsync(long battleId, ChunkKey chunkKey, IChunklerClient chunklerClient)
+        public async Task<ChunkHandler> CreateChunkHandlerAsync(long battleId, ChunkSettings chunkSettings, ChunkKey chunkKey, IChunklerClient chunklerClient)
         {
-            var handler = new ChunkHandler(battleId, chunkKey, chunklerClient);
+            var handler = new ChunkHandler(battleId, chunkSettings, chunkKey, chunklerClient);
             await handler.SubscribeToChunkAsync();
             return handler;
         }

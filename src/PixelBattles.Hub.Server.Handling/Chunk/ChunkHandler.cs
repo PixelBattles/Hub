@@ -1,4 +1,5 @@
 ﻿using PixelBattles.Chunkler.Client;
+using PixelBattles.Hub.Server.Handling.Chunk;
 using System;
 using System.Collections.Concurrent;
 using System.Threading;
@@ -13,6 +14,8 @@ namespace PixelBattles.Hub.Server.Handlers.Chunk
         private readonly ConcurrentDictionary<IChunkHandlerSubscription, Func<ChunkKey, ChunkUpdate, Task>> _subscriptions;
         private IChunkSubscription _chunkSubscription;
 
+        private ChunkSettings _chunkSettings;
+
         private int _subscriptionCounter;
         public int SubscriptionCounter => _subscriptionCounter;
 
@@ -25,9 +28,10 @@ namespace PixelBattles.Hub.Server.Handlers.Chunk
         private bool _isClosing;
         public bool IsClosing => Volatile.Read(ref _isClosing);
 
-        public ChunkHandler(long battleId, ChunkKey chunkKey, IChunklerClient chunklerClient)
+        public ChunkHandler(long battleId, ChunkSettings chunkSettings, ChunkKey chunkKey, IChunklerClient chunklerClient)
         {
             _chunkKey = chunkKey;
+            _chunkSettings = chunkSettings ?? throw new ArgumentNullException(nameof(chunkSettings));
             _chunklerClient = chunklerClient ?? throw new ArgumentNullException(nameof(chunklerClient));
             _subscriptions = new ConcurrentDictionary<IChunkHandlerSubscription, Func<ChunkKey, ChunkUpdate, Task>>();
             _lastUpdatedTicksUTC = DateTime.MinValue.Ticks;
@@ -72,6 +76,11 @@ namespace PixelBattles.Hub.Server.Handlers.Chunk
 
         public async Task<int> ProcessAsync(ChunkAction chunkAction)
         {
+            if (!IsValidChunkAction(chunkAction))
+            {
+                throw new InvalidOperationException($"Chunk {chunkAction} is not valid.");
+            }
+
             //we do not need an accurate value
             _lastUpdatedTicksUTC = DateTime.UtcNow.Ticks;
 
@@ -92,6 +101,11 @@ namespace PixelBattles.Hub.Server.Handlers.Chunk
 
         public async Task EnqueueAsync(ChunkAction chunkAction)
         {
+            if (!IsValidChunkAction(chunkAction))
+            {
+                throw new InvalidOperationException($"Chunk {chunkAction} is not valid.");
+            }
+
             //we do not need an accurate value
             _lastUpdatedTicksUTC = DateTime.UtcNow.Ticks;
 
@@ -170,6 +184,14 @@ namespace PixelBattles.Hub.Server.Handlers.Chunk
         public void DecrementSubscriptionCounter()
         {
             Interlocked.Decrement(ref _subscriptionCounter);
+        }
+
+        private bool IsValidChunkAction(ChunkAction chunkAction)
+        {
+            return chunkAction.X >= 0
+                && chunkAction.X < _chunkSettings.ChunkWidth
+                && chunkAction.Y >= 0
+                && chunkAction.Y < _chunkSettings.ChunkHeight;
         }
     }
 }

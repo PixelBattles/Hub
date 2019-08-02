@@ -1,6 +1,7 @@
 ﻿using Nito.AsyncEx;
 using PixelBattles.Chunkler.Client;
 using PixelBattles.Hub.Server.Handlers.Chunk;
+using PixelBattles.Hub.Server.Handling.Battle;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -16,6 +17,8 @@ namespace PixelBattles.Hub.Server.Handlers.Battle
         private readonly ConcurrentDictionary<ChunkKey, AsyncLazy<ChunkHandler>> _chunkHandlers;
         private readonly Dictionary<ChunkKey, AsyncLazy<ChunkHandler>> _compactedChunkHandlers;
 
+        private BattleSettings _battleSettings;
+
         private int _subscriptionCounter;
         public int SubscriptionCounter => _subscriptionCounter;
 
@@ -28,10 +31,11 @@ namespace PixelBattles.Hub.Server.Handlers.Battle
         private bool _isClosing;
         public bool IsClosing => Volatile.Read(ref _isClosing);
 
-        public BattleHandler(long battleId, IChunklerClient chunklerClient, IChunkHandlerFactory chunkHandlerFactory)
+        public BattleHandler(long battleId, BattleSettings battleSettings, IChunklerClient chunklerClient, IChunkHandlerFactory chunkHandlerFactory)
         {
             _isClosing = false;
             _battleId = battleId;
+            _battleSettings = battleSettings ?? throw new ArgumentNullException(nameof(battleSettings));
             _subscriptionCounter = 0;
             _lastUpdatedTicksUTC = DateTime.UtcNow.Ticks;
             _chunklerClient = chunklerClient ?? throw new ArgumentNullException(nameof(chunklerClient));
@@ -42,12 +46,17 @@ namespace PixelBattles.Hub.Server.Handlers.Battle
         
         public async Task<IChunkHandlerSubscription> GetChunkHandlerAndSubscribeAsync(ChunkKey chunkKey, Func<ChunkKey, ChunkUpdate, Task> onUpdate)
         {
+            if (!IsValidChunkKey(chunkKey))
+            {
+                throw new InvalidOperationException($"Chunk {chunkKey} is not allowed.");
+            }
+
             while (true)
             {
                 var chunkHandlerLazy = _chunkHandlers.GetOrAdd(
                     key: chunkKey,
                     valueFactory: key => new AsyncLazy<ChunkHandler>(
-                        factory: () => _chunkHandlerFactory.CreateChunkHandlerAsync(_battleId, chunkKey, _chunklerClient),
+                        factory: () => _chunkHandlerFactory.CreateChunkHandlerAsync(_battleId, _battleSettings.ChunkSettings, chunkKey, _chunklerClient),
                         flags: AsyncLazyFlags.RetryOnFailure));
 
                 var chunkHandler = await chunkHandlerLazy;
@@ -68,7 +77,7 @@ namespace PixelBattles.Hub.Server.Handlers.Battle
                 return subscription;
             }
         }
-
+        
         public async Task<(int chunkHandlersNotCompacted, int chunkHandlersCompacted)> CompactChunkHandlersAsync(long unusedChunkHanlderTicksUTCLimit)
         {
             int chunkHandlersNotCompacted = 0;
@@ -156,6 +165,14 @@ namespace PixelBattles.Hub.Server.Handlers.Battle
         public void Dispose()
         {
             _chunklerClient?.Dispose();
+        }
+
+        private bool IsValidChunkKey(ChunkKey chunkKey)
+        {
+            return chunkKey.X >= _battleSettings.MinWidthIndex
+                && chunkKey.X <= _battleSettings.MaxWidthIndex
+                && chunkKey.Y >= _battleSettings.MinHeightIndex
+                && chunkKey.Y <= _battleSettings.MaxHeightIndex;
         }
     }
 }
